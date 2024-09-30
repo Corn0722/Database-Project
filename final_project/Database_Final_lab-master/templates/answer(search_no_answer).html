@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+     <style>
+        table {
+            width: 35%; /* 设置表格宽度 */
+            margin: 0 auto; /* 居中显示表格 */
+            border-collapse: collapse;
+        }
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center; /* 居中对齐表格内容 */
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+    <body
+        style="
+            background-repeat: no-repeat;
+            background-size: 100%;
+            background-attachment: fixed;
+        "
+        background="static/bg.jpg"
+    >
+        <div style="text-align: center">
+            <font face="微軟正黑體">
+                <b>
+                    <br />
+                    <img src="static/poster.jpg" width=35%; />
+	<br />
+                </b>
+            </font>
+        <b>
+        	<table>
+		<td bgcolor="#CCCCCC">查詢結果</td>
+        	</table>
+	<span>** 查無該筆紀錄 **</span>
+        </b>
+        <br />
+                    
+        <br />
+        <form method="post" action="/reset">
+                        <input
+                            name="reset"
+                            type="image"
+                            src="static/返回.jpg"
+                            width="100"
+                            height="30"
+                        />
+         </form>
+         </div>
+    </body>
+</html>

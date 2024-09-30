@@ -1,0 +1,168 @@
+▲哪個區交通事故最頻繁(排序)
+SELECT District, COUNT(*) AS Accident_Count
+FROM Location
+GROUP BY District
+ORDER BY Accident_Count DESC;
+
+▲交通事故的肇事因素(排序)
+(in accident.csv - Causing_factor)
+SELECT Causing_factor, COUNT(*) AS Factor_Count
+FROM accident
+GROUP BY Causing_factor
+ORDER BY Factor_Count DESC
+
+▲哪個時段最容易發生交通事故
+(in time.csv - Hour)
+SELECT Hour, COUNT(*) AS Accident_Count
+FROM time
+GROUP BY Hour
+ORDER BY Accident_Count DESC;
+
+▲保護裝備和主要傷處之間的關聯※
+(in accident.csv - Main_injury)(in state.csv - Protective_equipement)
+WITH ProtectiveEquipMainInjuryCounts AS (
+    SELECT
+        s.Protective_equipement,
+        a.Main_injury,
+        COUNT(*) AS InjuryCount
+    FROM database.state s
+    INNER JOIN database.accident a ON s.Accident_index = a.Accident_index
+    GROUP BY s.Protective_equipement, a.Main_injury
+),
+RankedInjuriesByEquip AS (
+    SELECT
+        Protective_equipement,
+        Main_injury,
+        InjuryCount,
+        RANK() OVER (PARTITION BY Protective_equipement ORDER BY InjuryCount DESC) AS InjuryRank
+    FROM ProtectiveEquipMainInjuryCounts
+)
+SELECT
+    Protective_equipement,
+    Main_injury,
+    InjuryCount
+FROM RankedInjuriesByEquip
+WHERE InjuryRank <= 5
+ORDER BY Protective_equipement, InjuryRank;
+
+
+
+▲哪種當事者行動狀態交通事故率最高 (例如：車的狀態、人的狀態……)
+(in state.csv - Action_status)
+SELECT Action_status, COUNT(*) AS Accident_Rate
+FROM state
+GROUP BY Action_status
+ORDER BY Accident_Rate DESC;
+
+===============================================================================
+▲區 + 路面缺陷 (ex. 哪裡易因為路面不平造成車禍)
+(因路面突起的有哪幾區？各幾筆？因坑洞的有哪幾區？有幾筆？)
+(in location.csv - District)(in state.csv - Road_condition)
+SELECT l.District, COUNT(CASE WHEN r.Road_defect = 1 THEN 1 END) AS Road_defect_1_Count,
+       COUNT(CASE WHEN r.Road_defect = 2 THEN 1 END) AS Road_defect_2_Count,
+       COUNT(CASE WHEN r.Road_defect = 3 THEN 1 END) AS Road_defect_3_Count
+FROM location l
+JOIN road r ON l.Accident_index = r.Accident_index
+GROUP BY l.District
+ORDER BY l.District
+
+▲時間 + 主要肇因 (ex. 深夜容易因注意力不集中而導致車禍)
+(先以早中晚去排名前十名肇因，如果不行就用Hour)
+(in time.csv - Hour)(in accident.csv - Causing_factor)
+-- 創建視圖來將時間分成四個時段
+CREATE VIEW TimePeriod AS
+SELECT
+    CASE
+        WHEN Hour BETWEEN 5 AND 11 THEN '早'
+        WHEN Hour BETWEEN 11 AND 13 THEN '中'
+        WHEN Hour BETWEEN 13 AND 23 THEN '晚'
+        ELSE '凌晨'
+    END AS Period,
+    Accident_index
+FROM database.time;
+
+-- 使用視圖和資料表連接，計算每個時段的肇因排名
+WITH RankedCausingFactors AS (
+    SELECT
+        t.Period,
+        a.Causing_factor,
+        COUNT(*) AS FactorCount
+    FROM TimePeriod t
+    INNER JOIN database.accident a ON t.Accident_index = a.Accident_index
+    GROUP BY t.Period, a.Causing_factor
+),
+RankedFactorsByPeriod AS (
+    SELECT
+        Period,
+        Causing_factor,
+        FactorCount,
+        RANK() OVER (PARTITION BY Period ORDER BY FactorCount DESC) AS FactorRank
+    FROM RankedCausingFactors
+)
+SELECT
+    Period,
+    Causing_factor,
+    FactorCount
+FROM RankedFactorsByPeriod
+WHERE FactorRank <= 10
+ORDER BY Period, FactorRank;
+
+
+▲天候 + 地點 (ex. 哪裡下雨天就容易發生車禍)
+(按各天候排名出前十名的區)
+(in state.csv - Climate)(in location.csv - District)
+WITH ClimateDistrictCounts AS (
+    SELECT
+        s.Climate,
+        l.District,
+        COUNT(*) AS DistrictCount
+    FROM database.state s
+    INNER JOIN database.location l ON s.Accident_index = l.Accident_index
+    GROUP BY s.Climate, l.District
+),
+RankedDistrictsByClimate AS (
+    SELECT
+        Climate,
+        District,
+        DistrictCount,
+        RANK() OVER (PARTITION BY Climate ORDER BY DistrictCount DESC) AS DistrictRank
+    FROM ClimateDistrictCounts
+)
+SELECT
+    Climate,
+    District,
+    DistrictCount
+FROM RankedDistrictsByClimate
+WHERE DistrictRank <= 10
+ORDER BY Climate, DistrictRank;
+
+
+▲飲酒程度 + 受傷程度(ex. 重傷[有死亡 or 受傷數量超過某數]中有幾起因為酒駕而引起)
+(濃度區間有多少受傷人數 + 死亡人數)
+(in state.csv - Drinking_situation)(in accident.csv - Death_num	Injury_num)
+SELECT
+    s.Drinking_situation,
+    SUM(a.Injury_num) AS Total_Injuries,
+    SUM(a.Death_num) AS Total_Deaths
+FROM database.state s
+JOIN database.accident a ON s.Accident_index = a.Accident_index
+GROUP BY s.Drinking_situation;
+
+
+▲計算各區因酒駕肇事的排名 (飲酒情形 + 區)
+(in location.csv - District)(in state.csv - Drinking_situation)
+SELECT l.District, COUNT(s.Drinking_situation) AS Frequency
+FROM location l
+JOIN state s ON l.Accident_index = s.Accident_index
+WHERE s.Drinking_situation BETWEEN 4 AND 8
+GROUP BY l.District
+ORDER BY COUNT(s.Drinking_situation) DESC;
+
+
+===============================================================================
+▲用身分證或車牌查詢事故的相關資訊(時間、地點、肇因、肇事逃逸、當事人身分證、受傷程度、車牌…)
+(in all_info.csv )
+SELECT *
+FROM database.all_info
+WHERE License_num = 'YOUR_LICENSE_NUMBER' AND ID_card = 'YOUR_ID_CARD_NUMBER';
+(***YOUR_LICENSE_NUMBER和YOUR_ID_CARD_NUMBER要自己填入***)
