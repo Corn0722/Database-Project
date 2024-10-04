@@ -10,7 +10,7 @@
    - 身分證號碼
    - 車牌號碼
 
-## 資料架構圖
+## 資料關係圖
 <img width="60%" src="https://github.com/user-attachments/assets/7af126eb-7650-4f41-8a3f-f65fea8868df"/>
 
 ## 服務對象
