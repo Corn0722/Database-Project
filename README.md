@@ -9,6 +9,7 @@
  - 人工產生部分虛擬數據
    - 身分證號碼
    - 車牌號碼
+ - 11734 筆資料
 
 ## 資料關係圖
 <img width="60%" src="https://github.com/user-attachments/assets/7af126eb-7650-4f41-8a3f-f65fea8868df"/>
